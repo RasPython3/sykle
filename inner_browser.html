@@ -1,0 +1,592 @@
+<html>
+  <head>
+    <title>Sykle</title>
+    <link rel="shortcut icon" href="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgNjQgNjQiIHdpZHRoPSI2NHB4IiBoZWlnaHQ9IjY0cHgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+DQogIDxkZWZzPjwvZGVmcz4NCiAgPGVsbGlwc2Ugc3R5bGU9ImZpbGw6IHJnYigwLCAxMDIsIDI1NSk7IiBjeD0iMzIiIGN5PSIzMiIgcng9IjMyIiByeT0iMzIiPjwvZWxsaXBzZT4NCiAgPGVsbGlwc2Ugc3R5bGU9InN0cm9rZTogcmdiKDAsIDY4LCAxMzYpOyBzdHJva2Utd2lkdGg6IDJweDsgZmlsbDogcmdiKDE1MywgMTUzLCAxNTMpOyIgY3g9IjgiIGN5PSI0OCIgcng9IjQiIHJ5PSI0Ij48L2VsbGlwc2U+DQogIDxlbGxpcHNlIHN0eWxlPSJzdHJva2U6IHJnYigwLCA2OCwgMTM2KTsgc3Ryb2tlLXdpZHRoOiAycHg7IGZpbGw6IHJnYigxNTMsIDE1MywgMTUzKTsiIGN4PSI1NiIgY3k9IjE2IiByeD0iNCIgcnk9IjQiPjwvZWxsaXBzZT4NCiAgPHBhdGggZD0iTSA0OCAxNiBMIDE2IDE2IEwgOCAyNCBMIDU2IDM2IEwgNDggMjggTCA0OCAzMCBNIDE2IDM0IEwgMTYgMzYgTCA4IDI4IEwgNTYgNDAgTCA0OCA0OCBMIDE2IDQ4IiBzdHlsZT0iZmlsbDogbm9uZTsgc3Ryb2tlOiByZ2IoMTg2LCAyMDUsIDI1NSk7IHN0cm9rZS13aWR0aDogMnB4OyBzdHJva2UtbGluZWpvaW46IHJvdW5kOyBzdHJva2UtbGluZWNhcDogcm91bmQ7Ij48L3BhdGg+DQo8L3N2Zz4=">
+    <meta http-equiv="content-security-policy" content="frame-src *; child-src *; worker-src *">
+    <style>
+      * {
+        --theme-fg-color: #000000;
+        --theme-bg-color: #ffffff;
+        --theme-focused: #eeeeee;
+        --theme-clicked: #dddddd;
+        --theme-location: #eeeeee;
+        --theme-location-focus: #f9f9f9;
+        --bar-height: calc(var(--bar-row-height) * 2 + var(--progress-height));
+        --bar-row-height: 40px;
+        --progress-height: 4px;
+        --button-size: 32px;
+      }
+      @media (prefers-color-scheme: dark) {
+        * {
+          --theme-fg-color: #ffffff;
+          --theme-bg-color: #222222;
+          --theme-focused: #3f3f3f;
+          --theme-clicked: #505050;
+          --theme-location: #444444;
+          --theme-location-focus: #111111;
+        }
+      }
+      body {
+        margin: 0px;
+        height: 100vh;
+        background-color: var(--theme-bg-color);
+      }
+      #bar {
+        width: 100%;
+        height: var(--bar-height);
+        box-sizing: border-box;
+        display: inline-flex;
+        flex-direction: column;
+        transition: transform 0.5s;
+      }
+      #bar > .row {
+        display: inline-flex;
+        flex-direction: row;
+        align-items: center;
+        width: 100%;
+        height: var(--bar-row-height);
+        padding: 4px;
+        box-sizing: border-box;
+      }
+      #bar > .row.center {
+        justify-content: center;
+      }
+      .buttons {
+        display: inline-flex;
+        flex-direction: row;
+        
+      }
+      .buttons > .button {
+        position: relative;
+        display: inline-block;
+        width: var(--button-size);
+        height: var(--button-size);
+        margin: 2px;
+      }
+      .buttons > .button > input[type=button] {
+        position: absolute;
+        aspect-ratio: 1;
+        width: 100%;
+        height: 100%;
+        color: var(--theme-fg-color);
+        background-color: #00000000;
+        border: 0px;
+        border-radius: 20%;
+      }
+      .buttons > .button > input[type=button]:hover {
+        background-color: var(--theme-focused);
+      }
+      .buttons > .button > input[type=button]:active {
+        background-color: var(--theme-clicked);
+      }
+      .buttons > .button > input[type=button] + span.wrap {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        padding: 5%;
+        pointer-events: none;
+        background-color: var(--theme-fg-color);
+        -webkit-mask-size: contain;
+        -webkit-mask-position: center;
+        -webkit-mask-repeat: no-repeat;
+        -webkit-mask-origin: content-box;
+        box-sizing: border-box;
+      }
+      input[name="back"] + span.wrap {
+        -webkit-mask-image: url("data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMzIgMzIiIHdpZHRoPSIzMnB4IiBoZWlnaHQ9IjMycHgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+DQogIDxkZWZzPjwvZGVmcz4NCiAgPHBhdGggZD0iTSAzMSAxNiBDIDMxIDE2LjU1MiAzMC41NTIgMTcgMzAgMTcgTCA0LjQxNCAxNyBMIDE2LjcwNyAyOS4yOTMgQyAxNy4wOTggMjkuNjgzIDE3LjA5OCAzMC4zMTcgMTYuNzA3IDMwLjcwNyBDIDE2LjMxNyAzMS4wOTggMTUuNjgzIDMxLjA5OCAxNS4yOTMgMzAuNzA3IEwgMC41ODYgMTYgTCAxNS4yOTMgMS4yOTMgQyAxNS42ODMgMC45MDIgMTYuMzE3IDAuOTAyIDE2LjcwNyAxLjI5MyBDIDE3LjA5OCAxLjY4MyAxNy4wOTggMi4zMTcgMTYuNzA3IDIuNzA3IEwgNC40MTQgMTUgTCAzMCAxNSBDIDMwLjU1MiAxNSAzMSAxNS40NDggMzEgMTYgWiI+PC9wYXRoPg0KPC9zdmc+");
+      }
+      input[name="forward"] + span.wrap {
+        -webkit-mask-image: url("data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMzIgMzIiIHdpZHRoPSIzMnB4IiBoZWlnaHQ9IjMycHgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+DQogIDxkZWZzPjwvZGVmcz4NCiAgPHBhdGggZD0iTSAzMSAxNiBDIDMxIDE1LjQ0OCAzMC41NTIgMTUgMzAgMTUgTCA0LjQxNCAxNSBMIDE2LjcwNyAyLjcwNyBDIDE3LjA5OCAyLjMxNyAxNy4wOTggMS42ODMgMTYuNzA3IDEuMjkzIEMgMTYuMzE3IDAuOTAyIDE1LjY4MyAwLjkwMiAxNS4yOTMgMS4yOTMgTCAwLjU4NiAxNiBMIDE1LjI5MyAzMC43MDcgQyAxNS42ODMgMzEuMDk4IDE2LjMxNyAzMS4wOTggMTYuNzA3IDMwLjcwNyBDIDE3LjA5OCAzMC4zMTcgMTcuMDk4IDI5LjY4MyAxNi43MDcgMjkuMjkzIEwgNC40MTQgMTcgTCAzMCAxNyBDIDMwLjU1MiAxNyAzMSAxNi41NTIgMzEgMTYgWiIgdHJhbnNmb3JtPSJtYXRyaXgoLTEsIDAsIDAsIC0xLCAzMS41ODU5OTksIDMyKSI+PC9wYXRoPg0KPC9zdmc+");
+      }
+      input[name="reload"] + span.wrap {
+        -webkit-mask-image: url("data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMzIgMzIiIHdpZHRoPSIzMnB4IiBoZWlnaHQ9IjMycHgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+DQogIDxkZWZzPjwvZGVmcz4NCiAgPHBhdGggc3R5bGU9InBhaW50LW9yZGVyOiBmaWxsOyIgZD0iTSAxNiA3IEwgMjAgNCBMIDE2IDEgTCAxNiAzIEMgMTQuMjQxIDMgMTIuNTE3IDMuMzc3IDEwLjk0NiA0LjA0MiBDIDkuMzc1IDQuNzA3IDcuOTU2IDUuNjU5IDYuODA4IDYuODA4IEMgNS42NTkgNy45NTcgNC43MDcgOS4zNzUgNC4wNDIgMTAuOTQ2IEMgMy4zNzggMTIuNTE3IDMgMTQuMjQxIDMgMTYgQyAzIDE3Ljc1OSAzLjM3OCAxOS40ODMgNC4wNDIgMjEuMDU0IEMgNC43MDcgMjIuNjI1IDUuNjU5IDI0LjA0NCA2LjgwOCAyNS4xOTIgQyA3Ljk1NiAyNi4zNDEgOS4zNzUgMjcuMjkzIDEwLjk0NiAyNy45NTggQyAxMi41MTcgMjguNjIzIDE0LjI0MSAyOSAxNiAyOSBDIDE3Ljc1OSAyOSAxOS40ODMgMjguNjIzIDIxLjA1NCAyNy45NTggQyAyMi42MjUgMjcuMjkzIDI0LjA0NCAyNi4zNDEgMjUuMTkyIDI1LjE5MiBDIDI2LjM0MSAyNC4wNDQgMjcuMjkzIDIyLjYyNSAyNy45NTggMjEuMDU0IEMgMjguNjIzIDE5LjQ4MyAyOSAxNy43NTkgMjkgMTYgQyAyOSAxNC4yNDEgMjguNjIzIDEyLjUxNyAyNy45NTggMTAuOTQ2IEMgMjcuMjkzIDkuMzc1IDI2LjM0MSA3Ljk1NyAyNS4xOTIgNi44MDggTCAyMy43NzggOC4yMjIgQyAyNC44MDEgOS4yNDQgMjUuNjA3IDEwLjQxMiAyNi4xNTYgMTEuNzEyIEMgMjYuNzA2IDEzLjAxMiAyNyAxNC40NDUgMjcgMTYgQyAyNyAxNy41NTQgMjYuNzA2IDE4Ljk4OCAyNi4xNTYgMjAuMjg4IEMgMjUuNjA3IDIxLjU4OCAyNC44MDEgMjIuNzU1IDIzLjc3OCAyMy43NzggQyAyMi43NTYgMjQuODAxIDIxLjU4OCAyNS42MDcgMjAuMjg4IDI2LjE1NiBDIDE4Ljk4OCAyNi43MDYgMTcuNTU1IDI3IDE2IDI3IEMgMTQuNDQ2IDI3IDEzLjAxMiAyNi43MDYgMTEuNzEyIDI2LjE1NiBDIDEwLjQxMiAyNS42MDYgOS4yNDUgMjQuODAxIDguMjIyIDIzLjc3OCBDIDcuMTk5IDIyLjc1NiA2LjM5NCAyMS41ODggNS44NDQgMjAuMjg4IEMgNS4yOTQgMTguOTg4IDUgMTcuNTU1IDUgMTYgQyA1IDE0LjQ0NiA1LjI5NCAxMy4wMTIgNS44NDQgMTEuNzEyIEMgNi4zOTQgMTAuNDEyIDcuMTk5IDkuMjQ0IDguMjIyIDguMjIyIEMgOS4yNDUgNy4xOTkgMTAuNDEyIDYuMzk0IDExLjcxMiA1Ljg0NCBDIDEzLjAxMiA1LjI5NCAxNC40NDYgNSAxNiA1IEwgMTYgNyBaIj48L3BhdGg+DQo8L3N2Zz4=");
+      }
+      input[name="netinfo"] + span.wrap {
+        -webkit-mask-image: url("data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgNjQgNjQiIHdpZHRoPSI2NHB4IiBoZWlnaHQ9IjY0cHgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+DQogIDxkZWZzPjwvZGVmcz4NCiAgPHBhdGggZD0iTSA2NCAzMiBDIDY0IDQwLjc2NSA2MC4zNjMgNDguODkyIDU0LjYyNyA1NC42MjcgQyA0OC44OTIgNjAuMzYzIDQwLjc2NSA2NCAzMiA2NCBDIDIzLjIzNSA2NCAxNS4xMDkgNjAuMzYzIDkuMzczIDU0LjYyNyBDIDMuNjM3IDQ4Ljg5MiAwIDQwLjc2NSAwIDMyIEMgMCAyMy4yMzUgMy42MzcgMTUuMTA5IDkuMzczIDkuMzczIEMgMTUuMTA4IDMuNjM3IDIzLjIzNSAwIDMyIDAgQyA0MC43NjUgMCA0OC44OTIgMy42MzcgNTQuNjI3IDkuMzczIEMgNjAuMzYzIDE1LjEwOCA2NCAyMy4yMzUgNjQgMzIgWiBNIDUzLjIxMyAxMC43ODcgQyA0Ny43MjkgNS4zMDMgNDAuMzU2IDIgMzIgMiBDIDIzLjY0NCAyIDE2LjI3MSA1LjMwMyAxMC43ODcgMTAuNzg3IEMgNS4zMDMgMTYuMjcxIDIgMjMuNjQ0IDIgMzIgQyAyIDQwLjM1NiA1LjMwMyA0Ny43MjkgMTAuNzg3IDUzLjIxMyBDIDE2LjI3MSA1OC42OTcgMjMuNjQ0IDYyIDMyIDYyIEMgNDAuMzU2IDYyIDQ3LjcyOSA1OC42OTcgNTMuMjEzIDUzLjIxMyBDIDU4LjY5NyA0Ny43MjkgNjIgNDAuMzU2IDYyIDMyIEMgNjIgMjMuNjQ0IDU4LjY5NyAxNi4yNzEgNTMuMjEzIDEwLjc4NyBaIj48L3BhdGg+DQogIDxwYXRoIGQ9Ik0gMTYgNDggTCAxNiAyOCBMIDEyIDI4IEwgMjAgMTYgTCAyOCAyOCBMIDI0IDI4IEwgMjQgNDggWiI+PC9wYXRoPg0KICA8cGF0aCBkPSJNIDQwIDE2IEwgNDAgMzYgTCAzNiAzNiBMIDQ0IDQ4IEwgNTIgMzYgTCA0OCAzNiBMIDQ4IDE2IEwgNDAgMTYgWiI+PC9wYXRoPg0KPC9zdmc+");
+      }
+      input[name="extension"] + span.wrap {
+        -webkit-mask-image: url("data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMzIgMzIiIHdpZHRoPSIzMnB4IiBoZWlnaHQ9IjMycHgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+DQogIDxkZWZzPjwvZGVmcz4NCiAgPHBhdGggZD0iTSA2IDYgTCAxMCA2IEMgMTAgMy43OTEgMTEuNzkxIDIgMTQgMiBDIDE2LjIwOSAyIDE4IDMuNzkxIDE4IDYgTCAyMiA2IEMgMjQuMjA5IDYgMjYgNy43OTEgMjYgMTAgTCAyNiAxNCBDIDI4LjIwOSAxNCAzMCAxNS43OTEgMzAgMTggQyAzMCAyMC4yMSAyOC4yMDkgMjIgMjYgMjIgTCAyNiAyNiBDIDI2IDI4LjIwOSAyNC4yMDkgMzAgMjIgMzAgTCAxOCAzMCBDIDE4IDI3Ljc5MSAxNi4yMDkgMjYgMTQgMjYgQyAxMS43OTEgMjYgMTAgMjcuNzkxIDEwIDMwIEwgNiAzMCBDIDMuNzkxIDMwIDIgMjguMjA5IDIgMjYgTCAyIDIyIEMgNC4yMDkgMjIgNiAyMC4yMDkgNiAxOCBDIDYgMTUuNzkxIDQuMjA5IDE0IDIgMTQgTCAyIDEwIEMgMiA3Ljc5MSAzLjc5MSA2IDYgNiBaIj48L3BhdGg+DQo8L3N2Zz4=");
+      }
+      #omnibox {
+        width: 100%;
+        height: 100%;
+        posiition: relative;
+      }
+      #location {
+        width: 100%;
+        height: 100%;
+        border: 0px;
+        border-radius: 16px;
+        padding-inline: 8px;
+        color: var(--theme-fg-color);
+        background-color: var(--theme-location);
+      }
+      #location:focus {
+        outline: solid 1px #aaaaff;
+        background-color: var(--theme-location-focus);
+      }
+      #load-progress {
+        display: inline-flex;
+        width: 100%;
+        height: var(--progress-height);
+        overflow: hidden;
+      }
+      #load-progress-bar {
+        position: relative;
+        width: 0px;
+        height: 100%;
+        background-color: #9999ff;
+        animation-duration: 1.5s;
+        animation-name: load-ready;
+        animation-iteration-count: infinite;
+      }
+      @keyframes load-ready {
+        0% { left: 0; width: 0px; }
+        15% {left: 0; width: 100%; }
+        30% { left: 100%; width: 0px; }
+        35% { left: 0; width: 0px; }
+        67.5% {left: 0; width: 100%; }
+        100% { left: 100%; width: 0; }
+      }
+      @keyframes load {
+        0% { left: 0; width: 0px; }
+        100% { left: 0; width: 100%; }
+      }
+      #browser-frame {
+        position: relative;
+        width: 100%;
+        height: calc(100vh - var(--bar-height));
+      }
+      #browser-frame > #click-handler {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+      }
+      #browser-frame > iframe {
+        width: 100%;
+        height: 100%;
+        border: 0px;
+        background-color: white;
+      }
+      span.logo {
+        display: inline-block;
+        height: 100%;
+        aspect-ratio: 1;
+        background-size: cover;
+        background-image: url("data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgNjQgNjQiIHdpZHRoPSI2NHB4IiBoZWlnaHQ9IjY0cHgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+DQogIDxkZWZzPjwvZGVmcz4NCiAgPGVsbGlwc2Ugc3R5bGU9ImZpbGw6IHJnYigwLCAxMDIsIDI1NSk7IiBjeD0iMzIiIGN5PSIzMiIgcng9IjMyIiByeT0iMzIiPjwvZWxsaXBzZT4NCiAgPGVsbGlwc2Ugc3R5bGU9InN0cm9rZTogcmdiKDAsIDY4LCAxMzYpOyBzdHJva2Utd2lkdGg6IDJweDsgZmlsbDogcmdiKDE1MywgMTUzLCAxNTMpOyIgY3g9IjgiIGN5PSI0OCIgcng9IjQiIHJ5PSI0Ij48L2VsbGlwc2U+DQogIDxlbGxpcHNlIHN0eWxlPSJzdHJva2U6IHJnYigwLCA2OCwgMTM2KTsgc3Ryb2tlLXdpZHRoOiAycHg7IGZpbGw6IHJnYigxNTMsIDE1MywgMTUzKTsiIGN4PSI1NiIgY3k9IjE2IiByeD0iNCIgcnk9IjQiPjwvZWxsaXBzZT4NCiAgPHBhdGggZD0iTSA0OCAxNiBMIDE2IDE2IEwgOCAyNCBMIDU2IDM2IEwgNDggMjggTCA0OCAzMCBNIDE2IDM0IEwgMTYgMzYgTCA4IDI4IEwgNTYgNDAgTCA0OCA0OCBMIDE2IDQ4IiBzdHlsZT0iZmlsbDogbm9uZTsgc3Ryb2tlOiByZ2IoMTg2LCAyMDUsIDI1NSk7IHN0cm9rZS13aWR0aDogMnB4OyBzdHJva2UtbGluZWpvaW46IHJvdW5kOyBzdHJva2UtbGluZWNhcDogcm91bmQ7Ij48L3BhdGg+DQo8L3N2Zz4=");
+      }
+      span.logo-name {
+        display: inline-block;
+        height: 100%;
+        aspect-ratio: 2.5;
+        box-sizing: border-box;
+        background-color: var(--theme-fg-color);
+        -webkit-mask-size: 100%;
+        -webkit-mask-position: center;
+        -webkit-mask-repeat: no-repeat;
+        -webkit-mask-image: url("data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTYwIDY0IiB3aWR0aD0iMTYwcHgiIGhlaWdodD0iNjRweCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4NCiAgPGRlZnM+PC9kZWZzPg0KICA8cGF0aCBkPSJNIDExLjQ5MSA0NC45NiBDIDkuNjY3IDQ0Ljk2IDcuODk5IDQ0Ljc5MiA2LjE4NyA0NC40NTYgQyA0LjQ3NSA0NC4xMiAzLjEwNyA0My42OTYgMi4wODMgNDMuMTg0IEwgMi4wODMgMzkuMiBDIDMuMjY3IDM5LjcxMiA0LjcwNyA0MC4xODQgNi40MDMgNDAuNjE2IEMgOC4wOTkgNDEuMDQ4IDkuODI3IDQxLjI2NCAxMS41ODcgNDEuMjY0IEMgMTYuNTE1IDQxLjI2NCAxOC45NzkgMzkuMjY0IDE4Ljk3OSAzNS4yNjQgQyAxOC45NzkgMzQuMTc2IDE4Ljc1NSAzMy4zMTIgMTguMzA3IDMyLjY3MiBDIDE3Ljg1OSAzMi4wMzIgMTcuMDY3IDMxLjQxNiAxNS45MzEgMzAuODI0IEMgMTQuNzk1IDMwLjIzMiAxMy4yMDMgMjkuNDg4IDExLjE1NSAyOC41OTIgQyA5LjgxMSAyNy45ODQgOC40OTkgMjcuMzEyIDcuMjE5IDI2LjU3NiBDIDUuOTM5IDI1Ljg0IDQuODkxIDI0Ljg2NCA0LjA3NSAyMy42NDggQyAzLjI1OSAyMi40MzIgMi44NTEgMjAuODMyIDIuODUxIDE4Ljg0OCBDIDIuODUxIDE1LjkwNCAzLjgyNyAxMy42NDggNS43NzkgMTIuMDggQyA3LjczMSAxMC41MTIgMTAuNDAzIDkuNzI4IDEzLjc5NSA5LjcyOCBDIDE1LjUyMyA5LjcyOCAxNy4xNTUgOS45MTIgMTguNjkxIDEwLjI4IEMgMjAuMjI3IDEwLjY0OCAyMS41NzEgMTEuMTA0IDIyLjcyMyAxMS42NDggTCAyMS4zMzEgMTUuMjQ4IEMgMjAuMjQzIDE0LjczNiAxOS4wMjcgMTQuMzI4IDE3LjY4MyAxNC4wMjQgQyAxNi4zMzkgMTMuNzIgMTUuMDExIDEzLjU2OCAxMy42OTkgMTMuNTY4IEMgMTEuODQzIDEzLjU2OCAxMC4zMDcgMTMuOTY4IDkuMDkxIDE0Ljc2OCBDIDcuODc1IDE1LjU2OCA3LjI2NyAxNi45NiA3LjI2NyAxOC45NDQgQyA3LjI2NyAyMC4wNjQgNy40OTkgMjAuOTc2IDcuOTYzIDIxLjY4IEMgOC40MjcgMjIuMzg0IDkuMTcxIDIzIDEwLjE5NSAyMy41MjggQyAxMS4yMTkgMjQuMDU2IDEyLjUzMSAyNC42NzIgMTQuMTMxIDI1LjM3NiBDIDE1Ljk1NSAyNi4xNDQgMTcuNTYzIDI2LjkyIDE4Ljk1NSAyNy43MDQgQyAyMC4zNDcgMjguNDg4IDIxLjQzNSAyOS40NTYgMjIuMjE5IDMwLjYwOCBDIDIzLjAwMyAzMS43NiAyMy4zOTUgMzMuMzI4IDIzLjM5NSAzNS4zMTIgQyAyMy4zOTUgMzguMzUyIDIyLjM5NSA0MC43MiAyMC4zOTUgNDIuNDE2IEMgMTguMzk1IDQ0LjExMiAxNS40MjcgNDQuOTYgMTEuNDkxIDQ0Ljk2IFogTSAzNy4zMjggNTYuMjQgQyAzNi42ODggNTYuMjQgMzYuMDY0IDU2LjIgMzUuNDU2IDU2LjEyIEMgMzQuODQ4IDU2LjA0IDM0LjMyIDU1Ljk1MiAzMy44NzIgNTUuODU2IEwgMzMuODcyIDUyLjU0NCBDIDM0LjI1NiA1Mi42MDggMzQuNzEyIDUyLjY3MiAzNS4yNCA1Mi43MzYgQyAzNS43NjggNTIuOCAzNi4yODggNTIuODMyIDM2LjggNTIuODMyIEMgMzguMjcyIDUyLjgzMiAzOS40MDggNTIuNDcyIDQwLjIwOCA1MS43NTIgQyA0MS4wMDggNTEuMDMyIDQxLjcyOCA0OS44NTYgNDIuMzY4IDQ4LjIyNCBMIDQzLjc2IDQ0LjcyIEwgMzIuOTYgMTguNzUyIEwgMzcuMTg0IDE4Ljc1MiBMIDQzLjMyOCAzMy44NzIgQyA0My43NDQgMzQuODY0IDQ0LjE1MiAzNS45NjggNDQuNTUyIDM3LjE4NCBDIDQ0Ljk1MiAzOC40IDQ1LjMxMiAzOS41NjggNDUuNjMyIDQwLjY4OCBMIDQ1Ljc3NiA0MC42ODggQyA0Ni4xMjggMzkuNTA0IDQ2LjQ5NiAzOC4zMTIgNDYuODggMzcuMTEyIEMgNDcuMjY0IDM1LjkxMiA0Ny42MTYgMzQuODE2IDQ3LjkzNiAzMy44MjQgTCA1Mi45NzYgMTguNzUyIEwgNTcuMzkyIDE4Ljc1MiBMIDQ2LjU5MiA0Ny44NCBDIDQ1Ljk4NCA0OS41MDQgNDUuMzIgNTAuOTY4IDQ0LjYgNTIuMjMyIEMgNDMuODggNTMuNDk2IDQyLjk1MiA1NC40OCA0MS44MTYgNTUuMTg0IEMgNDAuNjggNTUuODg4IDM5LjE4NCA1Ni4yNCAzNy4zMjggNTYuMjQgWiBNIDY4LjYzNyA0NC40OCBMIDY4LjYzNyA4IEwgNzIuOTU3IDggTCA3Mi45NTcgMjUuNTY4IEMgNzIuOTU3IDI2LjU2IDcyLjkxNyAyNy43MzYgNzIuODM3IDI5LjA5NiBDIDcyLjc1NyAzMC40NTYgNzIuNjg1IDMxLjY5NiA3Mi42MjEgMzIuODE2IEwgNzIuNzE3IDMyLjgxNiBDIDczLjMyNSAzMi4wMTYgNzMuOTA5IDMxLjI4OCA3NC40NjkgMzAuNjMyIEMgNzUuMDI5IDI5Ljk3NiA3NS42MTMgMjkuMjk2IDc2LjIyMSAyOC41OTIgTCA4NS4xMDEgMTguNzUyIEwgOTAuMjg1IDE4Ljc1MiBMIDgwLjA2MSAyOS44NCBMIDkwLjk1NyA0NC40OCBMIDg1Ljk2NSA0NC40OCBMIDc3LjE4MSAzMi4zODQgTCA3Mi45NTcgMzYuNDY0IEwgNzIuOTU3IDQ0LjQ4IEwgNjguNjM3IDQ0LjQ4IFogTSAxMDAuMjM0IDQ0LjQ4IEwgMTAwLjIzNCA0MS42IEwgMTA5LjY0MiA0MC44OCBMIDEwOS42NDIgMTEuNiBMIDEwMC41MjIgMTAuOTc2IEwgMTAwLjUyMiA4IEwgMTEzLjk2MiA4IEwgMTEzLjk2MiA0MC44OCBMIDEyMi4zMTQgNDEuNiBMIDEyMi4zMTQgNDQuNDggTCAxMDAuMjM0IDQ0LjQ4IFogTSAxNDUuMzcxIDQ0Ljk2IEMgMTQxLjI0MyA0NC45NiAxMzcuOTk1IDQzLjgxNiAxMzUuNjI3IDQxLjUyOCBDIDEzMy4yNTkgMzkuMjQgMTMyLjA3NSAzNS45NjggMTMyLjA3NSAzMS43MTIgQyAxMzIuMDc1IDI4Ljg5NiAxMzIuNTg3IDI2LjQ4OCAxMzMuNjExIDI0LjQ4OCBDIDEzNC42MzUgMjIuNDg4IDEzNi4wNTkgMjAuOTUyIDEzNy44ODMgMTkuODggQyAxMzkuNzA3IDE4LjgwOCAxNDEuODM1IDE4LjI3MiAxNDQuMjY3IDE4LjI3MiBDIDE0Ny42MjcgMTguMjcyIDE1MC4yNzUgMTkuMzYgMTUyLjIxMSAyMS41MzYgQyAxNTQuMTQ3IDIzLjcxMiAxNTUuMTE1IDI2LjY4OCAxNTUuMTE1IDMwLjQ2NCBMIDE1NS4xMTUgMzIuNDMyIEwgMTM2LjQ0MyAzMi40MzIgQyAxMzYuNTA3IDM0LjY3MiAxMzYuOTMxIDM2LjQ0OCAxMzcuNzE1IDM3Ljc2IEMgMTM4LjQ5OSAzOS4wNzIgMTM5LjU3MSA0MC4wMDggMTQwLjkzMSA0MC41NjggQyAxNDIuMjkxIDQxLjEyOCAxNDMuODY3IDQxLjQwOCAxNDUuNjU5IDQxLjQwOCBDIDE0Ny4wNjcgNDEuNDA4IDE0OC40NTkgNDEuMjE2IDE0OS44MzUgNDAuODMyIEMgMTUxLjIxMSA0MC40NDggMTUyLjU4NyAzOS45MzYgMTUzLjk2MyAzOS4yOTYgTCAxNTMuOTYzIDQzLjEzNiBDIDE1Mi40OTEgNDMuNzc2IDE1MS4wMTkgNDQuMjQgMTQ5LjU0NyA0NC41MjggQyAxNDguMDc1IDQ0LjgxNiAxNDYuNjgzIDQ0Ljk2IDE0NS4zNzEgNDQuOTYgWiBNIDEzNi41MzkgMjguOTc2IEwgMTUwLjc5NSAyOC45NzYgQyAxNTAuNjk5IDI2LjczNiAxNTAuMDk5IDI0Ljk3NiAxNDguOTk1IDIzLjY5NiBDIDE0Ny44OTEgMjIuNDE2IDE0Ni4zMTUgMjEuNzc2IDE0NC4yNjcgMjEuNzc2IEMgMTQyLjEyMyAyMS43NzYgMTQwLjM4NyAyMi40MjQgMTM5LjA1OSAyMy43MiBDIDEzNy43MzEgMjUuMDE2IDEzNi44OTEgMjYuNzY4IDEzNi41MzkgMjguOTc2IFoiIHN0eWxlPSJ3aGl0ZS1zcGFjZTogcHJlOyI+PC9wYXRoPg0KPC9zdmc+");
+      }
+      span.logo+span.logo-name {
+        margin-left: 5px;
+      }
+      .tips-top {
+        display: inline-block;
+        position: absolute;
+        top: var(--bar-height);
+        left: 50vw;
+        transform: translateX(-50%);
+      }
+      .tooltip {
+        display: none;
+        opacity: 0;
+        position: absolute;
+        min-width: 10em;
+        border: solid 1px var(--theme-fg-color);
+        border-radius: 8px;
+        padding: 0.75em;
+        padding-top: 0;
+        top: calc(100% + 5px);
+        color: var(--theme-fg-color);
+        background-color: var(--theme-bg-color);
+        z-index: 20;
+        transform: scale(0.8);
+        transition: opacity, transform 0.2s;
+        max-height: 80vh;
+        overflow: scroll;
+        box-shadow: 0 0 4px 2px #0000007f;
+      }
+      /* .tooltip::-webkit-scrollbar {
+        color: white;
+      }
+      .tooltip::-webkit-scrollbar-track {
+      }
+      .tooltip::-webkit-scrollbar-thumb {
+        color: white;
+      } */
+      .tips-top > .tooltip {
+        position: static;
+      }
+      .tooltip > .header {
+        display: inline-flex;
+        position: sticky;
+        width: 100%;
+        height: 2em;
+        top: 0;
+        align-items: center;
+        background-color: inherit;
+        z-index: 25;
+      }
+      .tooltip > .header > .close {
+        display: inline-block;
+        top: 5px;
+        right: 5px;
+        padding: 0px;
+        margin: 0px;
+        width: 1.2em;
+        height: 1.2em;
+        margin-left: auto;
+        background-color: var(--theme-fg-color);
+        -webkit-mask-size: 90%;
+        -webkit-mask-position: center;
+        -webkit-mask-repeat: no-repeat;
+        -webkit-mask-image: url("data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMzIgMzIiIHdpZHRoPSIzMnB4IiBoZWlnaHQ9IjMycHgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+DQogIDxkZWZzPjwvZGVmcz4NCiAgPHBhdGggZD0iTSAxNC4wMzYgMy45ODggSCAyMC40MzYgViAxNi43ODggSCAzMy4yMzYgViAyMy4xODggSCAyMC40MzYgViAzNS45ODggSCAxNC4wMzYgViAyMy4xODggSCAxLjIzNiBWIDE2Ljc4OCBIIDE0LjAzNiBaIiB0cmFuc2Zvcm09Im1hdHJpeCgwLjcwNzA0OSwgMC43MDcxNjQsIC0wLjcwNzE2NCwgMC43MDcwNDksIDE3Ljk0OTM4NywgLTEwLjMxOTg4OSkiPjwvcGF0aD4NCjwvc3ZnPg==");
+        box-sizing: content-box;
+      }
+      input[type="checkbox"] {
+        display: inline-flex;
+        appearance: unset;
+        width: 3.5em;
+        height: 2em;
+        border-radius: 2em;
+        border:  solid 1px var(--theme-fg-color);
+        align-items: center;
+        box-sizing: border-box;
+      }
+      input[type="checkbox"]:checked {
+        background-color: #6666ff;
+      }
+      input[type="checkbox"]::after {
+        content: "";
+        display: inline-block;
+        position: relative;
+        height: 80%;
+        aspect-ratio: 1;
+        margin: calc(8% - 0.5px);
+        background-color: white;
+        background-origin: content-box;
+        border-style: solid;
+        border-width: 1px;
+        border-color: var(--theme-fg-color);
+        border-radius: 50%;
+        padding: 5%;
+        box-sizing: border-box;
+        left: 0;
+        background-size: contain;
+        transition: left 0.15s cubic-bezier(0.67, -0.01, 0.1, 1.5);
+      }
+      input[type="checkbox"]:checked::after {
+        left: 42%;
+      }
+      .tooltip[name="netinfo"] {
+      }
+      .tooltip[name="netinfo"] td {
+        white-space: nowrap;
+        color: var(--theme-fg-color);
+      }
+      .tooltip[name="netinfo"] span.macaddr, span.ipaddr {
+        font-family: monospace;
+      }
+      .tooltip[name="extension"] li {
+        display: inline-flex;
+        align-items: center;
+        width: 100%;
+      }
+      .tooltip[name="extension"] li span {
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+      }
+    </style>
+    <script src="network.js"></script>
+    <script src="brMain.js"></script>
+  </head>
+  <body>
+    <div id="bar">
+      <div class="row center">
+        <span class="logo"></span>
+        <span class="logo-name"></span>
+      </div>
+      <div class="row">
+        <div class="buttons">
+          <div class="button"><input id="back" name="back" type="button"></input><span class="wrap"></span></div>
+          <div class="button"><input id="forward" name="forward" type="button"></input><span class="wrap"></span></div>
+          <div class="button"><input id="reload" name="reload" type="button"></input><span class="wrap"></span></div>
+        </div>
+        <div id="omnibox">
+          <input id="location" type="url"></input>
+        </div>
+        <div class="buttons">
+          <div class="button">
+            <input name="extension" type="button" data-type="tooltip"></input>
+            <span class="wrap"></span>
+              <div class="tooltip" name="extension">
+                <ul>
+                  <li>
+                    <span>表示テスト</span>
+                    <input type="checkbox"></input>
+                  </li>
+                  <li>
+                    <span>表示テスト</span>
+                    <input type="checkbox"></input>
+                  </li>
+                  <li>
+                    <span>表示テスト</span>
+                    <input type="checkbox"></input>
+                  </li>
+                  <li>
+                    <span>表示テスト</span>
+                    <input type="checkbox"></input>
+                  </li>
+                  <li>
+                    <span>表示テスト</span>
+                    <input type="checkbox"></input>
+                  </li>
+                  <li>
+                    <span>表示テスト</span>
+                    <input type="checkbox"></input>
+                  </li>
+                  <li>
+                    <span>表示テスト</span>
+                    <input type="checkbox"></input>
+                  </li>
+                  <li>
+                    <span>表示テスト</span>
+                    <input type="checkbox"></input>
+                  </li>
+                  <li>
+                    <span>表示テスト</span>
+                    <input type="checkbox"></input>
+                  </li>
+                  <li>
+                    <span>表示テスト</span>
+                    <input type="checkbox"></input>
+                  </li>
+                  <li>
+                    <span>表示テスト</span>
+                    <input type="checkbox"></input>
+                  </li>
+                  <li>
+                    <span>表示テスト</span>
+                    <input type="checkbox"></input>
+                  </li>
+                  <li>
+                    <span>表示テスト</span>
+                    <input type="checkbox"></input>
+                  </li>
+                  <li>
+                    <span>表示テスト</span>
+                    <input type="checkbox"></input>
+                  </li>
+                  <li>
+                    <span>表示テスト</span>
+                    <input type="checkbox"></input>
+                  </li>
+                  <li>
+                    <span>表示テスト</span>
+                    <input type="checkbox"></input>
+                  </li>
+                  <li>
+                    <span>表示テスト</span>
+                    <input type="checkbox"></input>
+                  </li>
+                  <li>
+                    <span>表示テスト</span>
+                    <input type="checkbox"></input>
+                  </li>
+                </ul>
+              </div>
+          </div>
+          <div class="button">
+            <input name="netinfo" type="button" data-type="tooltip"></input>
+            <span class="wrap"></span>
+            <div class="tooltip" name="netinfo">
+              <table>
+                <tbody>
+                  <tr>
+                    <td>MACアドレス</td><td>:</td>
+                    <td><span class="macaddr"></span></td>
+                  <tr>
+                  <tr>
+                    <td>IPアドレス</td><td>:</td>
+                    <td><span class="ipaddr"></span></td>
+                  <tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="load-progress">
+        <span id="load-progress-bar"></span>
+      </div>
+    </div>
+    <div id="browser-frame">
+      <iframe id="view-frame" src="messaging.html">
+      </iframe>
+    </div>
+    <div class="tips-top">
+    </div>
+    <div>
+      <video autoplay loop hidden>
+        <source src="data:video/mp4;base64,AAAAHGZ0eXBpc29tAAACAGlzb21pc28ybXA0MQAAAy9tb292AAAAbG12aGQAAAAAAAAAAAAAAAAAAAPoAAATiAABAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAACWnRyYWsAAABcdGtoZAAAAAMAAAAAAAAAAAAAAAEAAAAAAAATiAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAgAAAAIAAAAAACRlZHRzAAAAHGVsc3QAAAAAAAAAAQAAE4gAAAAAAAEAAAAAAdJtZGlhAAAAIG1kaGQAAAAAAAAAAAAAAAAAAEAAAAFAAFXEAAAAAAAtaGRscgAAAAAAAAAAdmlkZQAAAAAAAAAAAAAAAFZpZGVvSGFuZGxlcgAAAAF9bWluZgAAABR2bWhkAAAAAQAAAAAAAAAAAAAAJGRpbmYAAAAcZHJlZgAAAAAAAAABAAAADHVybCAAAAABAAABPXN0YmwAAADZc3RzZAAAAAAAAAABAAAAyW1wNHYAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAgACAEgAAABIAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY//8AAABfZXNkcwAAAAADgICATgABAASAgIBAIBEAAAAAAw1AAAAAGwWAgIAuAAABsAEAAAG1iRMAAAEAAAABIADEjYgADQAUAFRjAAABskxhdmM1OS4yLjEwMAaAgIABAgAAABRidHJ0AAAAAAADDUAAAAAbAAAAGHN0dHMAAAAAAAAAAQAAAAEAAUAAAAAAHHN0c2MAAAAAAAAAAQAAAAEAAAABAAAAAQAAABRzdHN6AAAAAAAAABEAAAABAAAAFHN0Y28AAAAAAAAAAQAAA1sAAABhdWR0YQAAAFltZXRhAAAAAAAAACFoZGxyAAAAAAAAAABtZGlyYXBwbAAAAAAAAAAAAAAAACxpbHN0AAAAJKl0b28AAAAcZGF0YQAAAAEAAAAATGF2ZjU5LjMuMTAxAAAACGZyZWUAAAAZbWRhdAAAAbMAEAcAAAG2FgUYI9t+">
+      </video>
+    </div>
+    <script>
+      if (window.top != window) {
+        location.href="about:blank";
+      }
+      
+      hist = ["messaging.html"];
+      
+      sw = navigator.serviceWorker.register("worker.js");
+      sw.then(console.log).catch(console.log);
+      
+      
+      async function request() {
+        var data = new Uint8Array([255,255,255,255,255,255,2,174,26,156,75,10,8,6,0,1,8,0,6,4,0,1,2,174,26,156,75,10,10,5,86,244,0,0,0,0,0,0,10,5,86,244]);
+        var data2 = new Uint8Array([255,255,255,255,255,255,2,72,38,197,16,168,8,6,0,1,8,0,6,4,0,1,2,72,38,197,16,168,10,5,150,40,0,0,0,0,0,0,10,5,150,40]);
+        ws = new WebSocket("wss://relay.widgetry.org");
+        ws.addEventListener("open", (e)=>{
+          ws.send(data);
+          ws.send(data);
+          ws.send(data2);
+          setTimeout(()=>{ws.close()}, 2000);
+        });
+      }
+
+      
+      document.getElementById("location").addEventListener("focusin", (e)=>{
+        document.getElementById("location").select();
+        document.getElementById("location").click();
+      });
+      
+      document.getElementById("location").addEventListener("keydown", (e)=>{
+        if (e.code != "Enter") {
+          return;
+        }
+        console.log(res);
+      });
+
+      document.getElementById("back").addEventListener("click", (e)=>{frames[0].history.back();})
+      document.getElementById("forward").addEventListener("click", (e)=>{frames[0].history.forward();})
+      document.getElementById("reload").addEventListener("click", (e)=>{frames[0].history.go();})
+      for (let i of document.getElementsByClassName("button")) {
+        var bt = [...i.children].find((el)=>el.tagName=="INPUT"||el.tagName=="BUTTON");
+        if (bt == undefined) { continue; }
+        if (bt.hasAttribute("data-type")) {
+          var type = bt.getAttribute("data-type");
+          if (type=="tooltip") {
+            bt.addEventListener("click", async (e)=>{
+              var tip = [...document.getElementsByClassName("tooltip")].find((el)=>el.getAttribute("name") == e.target.name);
+              console.log(tip);
+              console.log(tip.style.display);
+              if (tip.style.display == "inline-block") {
+                tip.style.opacity = "";
+                tip.style.display = "";
+                tip.style.transform = "";
+                tip.style.transition = "";
+                e.target.style.backgroundColor = "";
+              } else {
+                e.target.style.backgroundColor = "var(--theme-clicked)";
+                tip.dispatchEvent(new Event("popup"));
+                [...tip.getElementsByClassName("header")].forEach((el)=>{el.remove();})
+                var header = document.createElement("div");
+                header.setAttribute("class", "header");
+                var closer = document.createElement("input");
+                closer.setAttribute("type", "button");
+                closer.setAttribute("class", "close");
+                tip.prepend(header);
+                header.append(closer)
+                tip.style.top = tip.style.bottom = tip.style.left = tip.style.right = "";
+                tip.style.opacity = "";
+                tip.style.display = "inline-block";
+                setTimeout(()=>{tip.style.opacity = 0.01;}, 5);
+                await waitUntil(tip, "transitionstart", 20, {doReject:false});
+                var rect = tip.getClientRects()[0];
+                rect = {top:rect.top, bottom: rect.bottom, left:rect.left, right: rect.right, width: rect.width, height: rect.height};
+                tip.style.transform = "scale(1)";
+                tip.style.opacity = 1;
+                rect.width += rect.width * 2 / 8;
+                rect.height += rect.height * 2 / 8;
+                rect.top -= rect.height / 10;
+                rect.bottom += rect.height / 10;
+                rect.left -= rect.width / 10;
+                rect.right += rect.width / 10;
+                if (rect.left < 10) {
+                  tip.style.left = 10 - rect.left;
+                } else if (rect.right > window.innerWidth - 10) {
+                  tip.style.left = window.innerWidth - 10 - rect.right;
+                }
+                if (rect.top < 10) {
+                  tip.style.top = 10 - top.left;
+                } else if (rect.bottom > window.innerHeight - 10) {
+                  tip.style.bottom = window.innerHeight - 10 - rect.bottom;
+                }
+                var controller = new AbortController();
+                function aborter(ev) {
+                  if (tip.style.display != "inline-block") {controller.abort(); return;}
+                  if (ev.path.includes(tip) || ev.path.includes(e.target)) {
+                    return;
+                  }
+                  tip.style.opacity = "";
+                  tip.style.display = "";
+                  tip.style.transform = "";
+                  tip.style.transition = "";
+                  e.target.style.backgroundColor = "";
+                  ev.target.addEventListener("click", ()=>{controller.abort}, {signal:controller.signal});
+                }
+                e.target.addEventListener("click", ()=>{controller.abort}, {signal: controller.signal});
+                window.addEventListener("mousedown", (ev)=>{aborter(ev)}, {signal: controller.signal});
+                frames.addEventListener("mousedown", (ev)=>{aborter(ev)}, {signal: controller.signal});
+                closer.addEventListener("click", (ev)=>{
+                  tip.style.opacity = "";
+                  tip.style.display = "";
+                  tip.style.transform = "";
+                  tip.style.transition = "";
+                  e.target.style.backgroundColor = "";
+                  tip.style.top = tip.style.bottom = tip.style.left = tip.style.right = "";
+                  controller.abort();
+                  closer.remove();
+                });
+                e.stopPropagation();
+              }
+            });
+          }
+        }
+      }
+      for (let tip of document.getElementsByClassName("tooltip")) {
+        if (tip.getAttribute("name") == "netinfo") {
+          tip.addEventListener("popup", (e)=>{
+            tip.getElementsByClassName("macaddr")[0].innerText = network!=undefined&&network.MAC!=undefined?network.MAC:"未設定";
+            tip.getElementsByClassName("ipaddr")[0].innerText = network!=undefined&&network.IP!=undefined?network.IP:"未設定";
+            (()=>{
+                  tip.style.top = tip.style.bottom = tip.style.left = tip.style.right = "";
+                  var rect = tip.getClientRects()[0];
+                  rect = {top:rect.top, bottom: rect.bottom, left:rect.left, right: rect.right, width: rect.width, height: rect.height};
+                  if (rect.left < 10) {
+                    tip.style.left = 10 - rect.left;
+                  } else if (rect.right > window.innerWidth - 10) {
+                    tip.style.left = window.innerWidth - 10 - rect.right;
+                  }
+                  if (rect.top < 10) {
+                    tip.style.top = 10 - top.left;
+                  } else if (rect.bottom > window.innerHeight - 10) {
+                    tip.style.bottom = window.innerHeight - 10 - rect.bottom;
+                  }
+                })();
+          });
+        }
+      }
+    </script>
+  </body>
+</html>

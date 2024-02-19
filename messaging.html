@@ -1,0 +1,86 @@
+<html>
+  <head></head>
+  <body>
+    <h1>iframe制御のコア部分</h1>
+    <script>
+      window.addEventListener("message", (e)=>{
+        if (e.source != top) {
+          return;
+        }
+        var data = e.data;
+        try {
+          if (data.type == "connect") {
+            ;
+          } else if (data.type == "go") {
+            try {
+              navigation.navigate(data.url);
+            } catch {
+              ;
+            }
+          } else {
+            throw undefined;
+          }
+        } catch {
+          top.postMessage({type:data.type, id:data.id, success:false}, "*");
+        }
+        top.postMessage({type:data.type, id:data.id, success:true}, "*"); 
+      });
+      navigation.addEventListener("navigate", (e)=>{
+        /* var message = {
+          downloadRequest: e.downloadRequest,
+          navigationType: e.navigationType,
+          timeStamp: e.timeStamp,
+          formData: e.formData && [...e.formData.entries()],
+          destination: {
+            id: e.destination.id,
+            index: e.destination.index,
+            key: e.destination.key,
+            sameDocument: e.destination.sameDocument,
+            url: e.destination.url
+          },
+          type: "navigate"
+        };
+        top.postMessage(["event", message], "*"); */
+        e.preventDefault();
+      });
+      window.addEventListener("click", (e)=>{
+        if (HTMLAnchorElement.prototype.isPrototypeOf(e.target)) {
+          e.preventDefault();
+        }
+      });
+      function deepCopy(obj, deep=10) {
+        var proto = obj;
+        if (deep <= 0) { return; }
+        //if ([Array, Map, Uint8Array, ].map((i)=>i.prototype).includes(Object.getPrototypeOf(obj))) { return obj; }
+        if (proto == Object.prototype) { return obj; }
+        var result = {};
+        while (proto != null) {
+          deep -= 1;
+          for (let i of Object.getOwnPropertyNames(proto)) {
+            if (Node.prototype.isPrototypeOf(obj[i]) || Window.prototype.isPrototypeOf(obj[i])) { continue; }
+            if (!Function.prototype.isPrototypeOf(obj[i]) && i != "__proto__" || Object.getPrototypeOf(obj[i]) == Object.prototype) {
+              result[i] = obj[i];
+              if (Object.prototype.isPrototypeOf(obj[i]) && Object.getPrototypeOf(obj[i]) != Object.prototype) {
+                result[i] = deepCopy(obj[i], deep-1);
+              }
+            }
+          }
+          proto = Object.getPrototypeOf(proto);
+        }
+        result.protoName = Object.getPrototypeOf(obj)[Symbol.toStringTag];
+        return result;
+      }
+      function sendEvent(e) {
+        var data = deepCopy(e);
+        top.postMessage(["event", data], "*");
+      }
+      for (let i of ["mousedown", "mouseup", "click", "keydown", "keyup", "keypress", "blur", "copy", "cut", "focus", "load", "paste"]) {
+        window.addEventListener(i, sendEvent);
+      }
+      for (let i of ["dragstart", "dragend", "drag"]) {
+        window.addEventListener(i, sendEvent);
+      }
+      window.navigation.addEventListener("navigate", sendEvent);
+    </script>
+  </body>
+</html>
