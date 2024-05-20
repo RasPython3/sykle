@@ -1039,9 +1039,19 @@ class DNSFrame extends NetworkFrame {
 class TLSFrame extends NetworkFrame {
   constructor() {
     super();
-    this.header.version = this.prototype.getVersionBinary();
+    this.header.version = TLSFrame.getVersionBinary(this.version);
     this.header.childType = undefined;
     this.encrypted = false;
+  }
+  build() {
+    this.body.version = this.header.version;
+    var rawChild = this.body.build();
+    return new Uint8Array([
+      0x16,
+      ...((bin)=>[bin >>> 8, bin & 0xff])(this.header.version),
+      ...((bin)=>[bin >>> 8, bin & 0xff])(rawChild.length),
+      ...rawChild
+    ]); // FIXME: if child frame is too large...!
   }
   static fromBinary(binary, encrypted=false) {
     var res = new this();
@@ -1064,14 +1074,14 @@ class TLSFrame extends NetworkFrame {
     }
     return res;
   }
-  static getVersionBinary() {
-    if (this.version == "1.0") {
+  static getVersionBinary(version) {
+    if (version == "1.0") {
       return 0x0301;
-    } else if (this.version == "1.1") {
+    } else if (version == "1.1") {
       return 0x0302;
-    } else if (this.version == "1.2") {
+    } else if (version == "1.2") {
       return 0x0303;
-    } else if (this.version == "1.3") {
+    } else if (version == "1.3") {
       return 0x0304;
     }
   }
@@ -1137,9 +1147,36 @@ class TLSHandshakeFrame extends NetworkFrame {
     super();
     this.type = type;
     if (type == 1) {
-      this.random = crypto.getRandomValues(new Uint8Array(32));
-      res.session = options.session || 0;
+      this.random = options.random;
+      this.sessionId = options.sessionId;
+      this.availableChangeCiphers = options.availableChangeCiphers || [TLSCipherSuits.TLS_NULL_WITH_NULL_NULL];
     }
+    this.extensions = extensions;
+    this.version = 0;
+  }
+  build() {
+    var data = [this.type];
+    if (this.type == 1 || this.type == 2) {
+      data.push(
+        ...((bin)=>[bin >>> 8, bin & 0xff])(this.version)
+      );
+      data.push(...this.random);
+      data.push(0) // session id is not supported yet.
+      if (this.type == 1) {
+        data.push(...((bin)=>[bin >>> 8, bin & 0xff])(this.availableChangeCiphers.length*2), ...this.availableChangeCiphers.flat());
+      } else {
+        data.push(...this.changeCipher);
+      }
+      data.push(1, 0) // compression methods are not supported.
+    }
+    // extension
+    data.push(...((bin)=>[bin >>> 8, bin & 0xff])(this.extensions.reduce((extension)=>extension.length, 0)));
+    if (this.extensions.length) {
+      data.push(...this.extensions.map((extension)=>[...extension]).flat());
+    }
+    data.splice(1, 0, ...((bin)=>[bin >>> 16, (bin & 0xff00) >>> 8, bin & 0xff])(data.length - 1));
+    console.log(data.slice(0, 4));
+    return new Uint8Array(data);
   }
   static fromBinary(binary, options={}) {
     var res = new this();
@@ -1147,12 +1184,12 @@ class TLSHandshakeFrame extends NetworkFrame {
     res.type = binary[0];
     res.length = binary.slice(1, 4).reduce((i, i2)=>(i << 8)|i2, 0);
     if (res.type == 1 || res.type == 2) {
-      let version = binary.slice(4, 6).reduce((i, i2)=>(i << 8)|i2, 0);
-      /*if (res.tlsVersion != version) {
+      /* let version = binary.slice(4, 6).reduce((i, i2)=>(i << 8)|i2, 0);
+      if (res.tlsVersion != version) {
         throw "A TLS Handshake Frame has two different versions!";
       }*/
       res.random = binary.slice(6, 38);
-      res.session = binary[38];
+      res.sessionId = binary[38]; // FIXME
       let i = 39;
       if (res.type == 1) {
         res.availableChangeCiphers = [];
@@ -1198,7 +1235,7 @@ class TLSHandshakeFrame extends NetworkFrame {
         i2 += 3 + binary.slice(i+i2, i+i2+3).reduce((i, i2)=>(i << 8)|i2, 0);
         res.certificates.push(Certificate.fromBinary(certBinary));
       }
-    } else if (type == 12)  {
+    } else if (res.type == 12)  {
       /* struct {
           select (KeyExchangeAlgorithm) {
               case dh_anon:
@@ -1283,6 +1320,7 @@ class TLSHandshakeFrame extends NetworkFrame {
           opaque dh_Ys<1..2^16-1>;
       } ServerDHParams;     /* Ephemeral DH parameters */
       let i = 4;
+      // skip!!!
     } else if (type == 16) {
       let i = 4;
       if (binary.length - 1 != binary[i]) {
@@ -1304,14 +1342,15 @@ class TLSChangeCipherFrame extends NetworkFrame {
   name = "TLSChangeCipher";
 }
 
-class TLSAppDataFrame extends TLSFrame {
-  constructor() {
+class TLSAppDataFrame extends NetworkFrame {
+  constructor(data) {
     super();
+    this.data = data;
   }
   name = "TLSAppData";
 }
 
-class TLSAlertFrame extends TLSFrame {
+class TLSAlertFrame extends NetworkFrame {
   constructor() {
     super();
   }
@@ -1515,6 +1554,15 @@ class NetworkSocketManager {
     this.TCPPorts.set(srcPort, sock);
     return sock;
   }
+  getTCPoverTLSSocket(srcPort, desPort, desIP) {
+    if (this.TCPPorts.has(srcPort)) {
+      throw "Requested port is already used";
+    }
+    this.TCPPorts.set(srcPort, true);
+    var sock = new TCPoverTLSSocket(this, srcPort, desPort, desIP);
+    this.TCPPorts.set(srcPort, sock);
+    return sock;
+  }
   getUDPSocket(srcPort, desPort, desIP) {
     if (this.UDPPorts.has(srcPort)) {
       throw "Requested port is already used";
@@ -1626,8 +1674,9 @@ class NetworkSocket extends EventTarget {
     super();
   }
 }
+
 class TCPSocket extends NetworkSocket {
-  #manager;
+  manager;
   #srcPort;
   #desPort;
   #desIP;
@@ -1636,7 +1685,7 @@ class TCPSocket extends NetworkSocket {
   #reject;
   constructor(manager, srcPort, desPort, desIP) {
     super();
-    this.#manager = manager;
+    this.manager = manager;
     this.#srcPort = srcPort;
     this.#desPort = desPort;
     this.#desIP = desIP;
@@ -1656,7 +1705,7 @@ class TCPSocket extends NetworkSocket {
   async send(data) {
     var tcp = new TCPFrame(network.IP, this.#srcPort, this.#desIP, this.#desPort, this.sequence, this.ackNum, ["ACK","PSH"], this.windowSize);
     tcp.data = data;
-    await this.#manager.send(this, tcp);
+    await this.manager.send(this, tcp);
   }
   async *listen(parser) {
     if (parser == undefined) {
@@ -1687,14 +1736,14 @@ class TCPSocket extends NetworkSocket {
     this.sequences = {};
     var packet = new TCPFrame(network.IP, this.#srcPort, this.#desIP, this.#desPort, this.sequence, this.ackNum, ["SYN",], "0402");
     this.windowSize = packet.header.windowSize;
-    await this.#manager.send(this, packet);
+    await this.manager.send(this, packet);
     var res = (await waitUntil(this, "message", 10000, {filter:(e)=>e.data.header.control.includes("ACK")})).data;
     this.sequence = res.header.ackNum;
     this.ackNum = res.header.sequence + 1;
     this.desSequence = this.ackNum;
     this.windowSize = Math.min(this.windowSize, res.header.windowSize);
     if (res.header.control.includes("SYN")) {
-      await this.#manager.send(this, new TCPFrame(network.IP, this.#srcPort, this.#desIP, this.#desPort, this.sequence, this.ackNum, ["ACK",]));
+      await this.manager.send(this, new TCPFrame(network.IP, this.#srcPort, this.#desIP, this.#desPort, this.sequence, this.ackNum, ["ACK",]));
     }
     console.log("handshaked");
     this.addEventListener("message", this.handleMessage)
@@ -1704,7 +1753,7 @@ class TCPSocket extends NetworkSocket {
     try {
       clearInterval(this.ackId);
     } catch {}
-    await this.#manager.send(this, new TCPFrame(network.IP, this.#srcPort, this.#desIP, this.#desPort, this.sequence, this.ackNum, ["FIN"]));
+    await this.manager.send(this, new TCPFrame(network.IP, this.#srcPort, this.#desIP, this.#desPort, this.sequence, this.ackNum, ["FIN"]));
     var res = (await waitUntil(this, "message", 10000, {filter:(e)=>e.data.header.control.includes("ACK")})).data;
     this.closed = true;
     this.#resolve = undefined;
@@ -1713,7 +1762,7 @@ class TCPSocket extends NetworkSocket {
   async tellMissed() {
     var missed = this.getMissed();
     if (missed != this.ackNum && missed != this.desSequence + this.dataSize) {
-      await this.#manager.send(this, new TCPFrame(network.IP, this.#srcPort, this.#desIP, this.#desPort, this.sequence, missed, ["ACK",]));
+      await this.manager.send(this, new TCPFrame(network.IP, this.#srcPort, this.#desIP, this.#desPort, this.sequence, missed, ["ACK",]));
     }
   }
   getMissed() {
@@ -1790,12 +1839,12 @@ class TCPSocket extends NetworkSocket {
       console.log(`--->   seq ${this.sequence}  ackNum ${this.getMissed()+this.desSequence} / ${ranges[0][1]+this.sequences[ranges[0][1]]}:  ${["ACK",].join(" ")}     ${0}`);
       console.log([ranges,  this.buffer.includes(null)?("05"+(ranges.length*8+2).toString(16).padStart(2, "0")+ranges.reduce((a, b)=>a+b[0].toString(16).padStart(8, "0")+b[1].toString(16).padStart(8, "0"), "")):undefined])
       this.ackId = setTimeout(async (options)=>{
-        await this.#manager.send(this, new TCPFrame(network.IP, this.#srcPort, this.#desIP, this.#desPort, this.sequence, this.desSequence+this.getMissed(), ["ACK",], options));
+        await this.manager.send(this, new TCPFrame(network.IP, this.#srcPort, this.#desIP, this.#desPort, this.sequence, this.desSequence+this.getMissed(), ["ACK",], options));
       }, 200, this.buffer.includes(null)&&(ranges.length > 1)?("05"+(((ranges.length>5?40:ranges.length*8)+2)>>>0).toString(16).padStart(2, "0")+ranges.slice(-5).reduce((a, b)=>a+((((b[0]+this.desSequence)>>>0)&0xffffffff)>>>0).toString(16).padStart(8, "0")+(((b[1]+this.desSequence)&0xffffffff)>>>0).toString(16).padStart(8, "0"), "")):undefined);
     }
     if (data.header.control.includes("FIN")) {
       this.ackNum += 1;
-      await this.#manager.send(this, new TCPFrame(network.IP, this.#srcPort, this.#desIP, this.#desPort, this.sequence, this.ackNum, ["ACK"]));
+      await this.manager.send(this, new TCPFrame(network.IP, this.#srcPort, this.#desIP, this.#desPort, this.sequence, this.ackNum, ["ACK"]));
       await this.close();
       if (this.buffer.length!=0 && !this.buffer.includes(null) && this.dataSize != -1) {
         console.log(this.buffer);
@@ -1852,12 +1901,34 @@ class CustomBuffer extends Array {
 }
 
 class TCPoverTLSSocket extends TCPSocket {
+  tcpManager;
   constructor(...args) {
     super(...args);
-    this.encrypted = false;
+    this.encryptMode = "null";
+    this.clientRandom = undefined;
+    this.serverRandom = undefined;
+    this.extensions = [];
+  }
+  wrap(data) {
+    let result = new TLSFrame();
+    result.body = data;
+    return result;
   }
   async handshake() {
+    this.clientRandom = new Uint8Array(32);
+    this.serverRandom = new Uint8Array(32);
+    window.crypto.getRandomValues(this.clientRandom);
     super.handshake();
+    console.log("tls handshake start...");
+    await this.send(
+      this.wrap(
+        new TLSHandshakeFrame(0x01, { // type 0x01 is Client Hello
+          random: this.clientRandom,
+          sessionId: undefined,
+        }, [])
+      )
+    );
+    console.log("tls handshake done");
   }
 }
 
@@ -2278,7 +2349,11 @@ async function ffetch(uri, options) {
   var sock;
   while (true) {
     try {
-      sock = socks.getTCPSocket(Math.floor(Math.random()*4096)+4096, 80, ipaddr);
+      if (uri.protocol == "https:") {
+        sock = socks.getTCPoverTLSSocket(Math.floor(Math.random()*4096)+4096, 443, ipaddr);
+      } else {
+        sock = socks.getTCPSocket(Math.floor(Math.random()*4096)+4096, 80, ipaddr);
+      }
     } catch(ev) {
       console.log(ev);
       continue;
